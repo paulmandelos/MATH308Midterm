@@ -1,0 +1,62 @@
+---
+title: "Math308 Midterm Project"
+author: "Christina Wei", "Paul Mandelos"
+date: "2024-03-05"
+output: pdf_document
+---
+
+```{r}
+library(readr)
+```
+
+
+```{r}
+co_occur_M <- read.csv('/Users/christinawei/Desktop/Math308 Midterm Project/co_occur.csv')
+dictionary <- readLines('/Users/christinawei/Desktop/Math308 Midterm Project/dictionary.txt')
+M_normalized <- log1p(as.matrix(co_occur_M))
+```                                                                                                                            
+
+
+## Function to find co-occurrence
+```{r}
+# Function to find co-occurrence count of two words
+find_cooccurrence <- function(word1, word2, dictionary, co_occurrence_M) {
+  # Find indices of the words in the dictionary
+  index1 <- which(dictionary == word1)
+  index2 <- which(dictionary == word2)
+  
+  # Check if both words are in the dictionary
+  if(length(index1) == 0 | length(index2) == 0) {
+    return(NA) # Return NA if either word is not found
+  }
+  
+  # Return co-occurrence count
+  co_occurrence_M[index1, index2]
+}
+
+
+```
+
+
+## Testing the Function
+```{r}
+# Example: Find co-occurrence of "king" and "queen"
+cooccurrence_king_queen <- find_cooccurrence("king", "queen", dictionary, M_normalized)
+print(paste("Co-occurrence of 'king' and 'queen':", cooccurrence_king_queen))
+
+# Example: Find co-occurrence of "power" and "energy"
+cooccurrence_power_energy <- find_cooccurrence("power", "energy", dictionary, M_normalized)
+print(paste("Co-occurrence of 'power' and 'energy':", cooccurrence_power_energy))
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+# Compute the svd
+library (irlba)
+svd_result <- irlba (M_normalized, nv = 100)
+
+# Plot the singular values
+singular_values <- data.frame("Index" = 1:100, "Value" = svd_result$d)
+```
