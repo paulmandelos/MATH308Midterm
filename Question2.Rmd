@@ -1,0 +1,70 @@
+---
+title: "Question2"
+author: "Christina Wei" and "Paul Mandelos"
+date: "2024-03-08"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(magick)
+
+# Load the image
+image <- image_read("/Users/paulmandelos/Downloads/p5_image.gif")
+
+# Convert the image to grayscale
+image_gray <- image_convert(image, colorspace = 'gray')
+image_raster <- as.raster(image_gray)
+image_matrix <- matrix(as.numeric(image_raster))
+image_matrix <- as.integer(image_data(image_gray))[,,1]
+
+binary_matrix <- 1 - (image_matrix > 0.5)
+svd1<-svd(binary_matrix)
+str(svd1)
+```
+
+## 2 SVD for image compression
+
+```{r q2}
+#matrix multiplication of U,D and V*
+#including only first singluar vector
+#approx1<-svd1$u[,1] %*% diag(svd1$d[1]) %*% t(svd1$v[,1])
+#including only first 3 singluar vectors
+approx3<-svd1$u[,1:3] %*% diag(svd1$d[1:3]) %*% t(svd1$v[,1:3])
+#including only first 10 singular vectors
+approx10<-svd1$u[,1:10] %*% diag(svd1$d[1:10]) %*% t(svd1$v[,1:10])
+#including only first 20 singular vectors
+approx20<-svd1$u[,1:20] %*% diag(svd1$d[1:20]) %*% t(svd1$v[,1:20])
+#including only first 50 singular vectors
+approx50<-svd1$u[,1:50] %*% diag(svd1$d[1:50]) %*% t(svd1$v[,1:50])
+#including only first 100 singular vectors
+approx100<-svd1$u[,1:100] %*% diag(svd1$d[1:100]) %*% t(svd1$v[,1:100])
+#including only first 150 singular vectors
+approx150<-svd1$u[,1:150] %*% diag(svd1$d[1:150]) %*% t(svd1$v[,1:150])
+#including only first 200 singular vectors
+approx200<-svd1$u[,1:200] %*% diag(svd1$d[1:200]) %*% t(svd1$v[,1:200])
+#including only first 400 singular vectors
+approx400<-svd1$u[,1:400] %*% diag(svd1$d[1:400]) %*% t(svd1$v[,1:400])
+#including only first 800 singular vectors
+approx800<-svd1$u[,1:800] %*% diag(svd1$d[1:800]) %*% t(svd1$v[,1:800])
+#including only first 1170 singular vectors
+full<-svd1$u[,1:1170] %*% diag(svd1$d[1:1170]) %*% t(svd1$v[,1:1170])
+par(mfrow=c(2,3),mar=c(1,1,1,1))
+#plotting for reduced images
+plot(approx3,main="(a) 5 singular Vectors",axes=FALSE)
+plot(approx20,main="(b) 20 singular Vectors ",axes=FALSE)
+plot(approx150,main="(c) 150 singular Vectors",axes=FALSE)
+plot(full,main="(d) Full image",axes=FALSE)
+```
+
+## 1.
+
+The Rank-1 approximation of an image using SVG captures the most significant patterns of the image. In the case of our moon, since the edges of the moon are completely dark and the center is brighter, the rank-1 approximation will reflect that. The rank-1 approximation will be a gradient of white/black with the center of the image (where the moon used to be) being brighter and the edges of the being black. The rank-1 approximation will show most prominent features of the moon's shape, but without any details.
+
+## 2.
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+## 3.
+We stop at 1170 because that's the number of singular values you can have at most for this image. This number comes from the smallest dimension of the image, which is its width in this case.
+## 4.
+## 5.
