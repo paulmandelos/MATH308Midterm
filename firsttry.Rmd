@@ -7,6 +7,8 @@ output: pdf_document
 
 ```{r}
 library(readr)
+library (irlba)
+library (ggplot2)
 ```
 
 
@@ -52,11 +54,230 @@ print(paste("Co-occurrence of 'power' and 'energy':", cooccurrence_power_energy)
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
+
+
+#2. 
+Based on the plot, it indicates that M is low rank matrix since the singular values shows a rapid decay, where the initial values are significantly larger than that follow, and they quickly diminish in magnitude. It means that the data or pattern in M can be captured with fewer dimension than the original matrix. 
 ```{r}
 # Compute the svd
-library (irlba)
 svd_result <- irlba (M_normalized, nv = 100)
 
 # Plot the singular values
 singular_values <- data.frame("Index" = 1:100, "Value" = svd_result$d)
+ggplot(singular_values, aes(x = Index, y = Value)) + 
+  geom_line() +
+  geom_point(color = "blue") + 
+  theme_minimal() +
+  ggtitle("Top 100 Singular Values of M") +
+  xlab("Singular Value Index") 
 ```
+
+
+#3.
+
+Assuming 'svd_result' is our SVS result and 'dictionary' is our word list
+```{r}
+i <- 1
+ # Select the i-th singular vector; replace i with the vector number
+v_i <- svd_result$v[,i]
+
+# Find indices of the top 10 positive and negative words
+top_positive_indices <- order(v_i, decreasing = TRUE)[1:10]
+top_negative_indices <- order(v_i)[1:10]
+
+# Map indices back to words
+top_positive_words <- dictionary[top_positive_indices]
+top_negative_words <- dictionary[top_negative_indices]
+
+# Print words
+print(list(positive = top_positive_words, negative = top_negative_words))
+```
+Not all the vectors are easy to interpret. It can be caused by the high dimensionality. The high dimension space might capture complex and subtile relationships that are not immediately apparent. Or it can be caused by overfitting. Some vectors might capture peculiarities of the specific dataset rather than generalizable language pattern. 
+
+
+# 4.
+(a)
+```{r}
+V <- svd_result$v
+# Normalize rows of V to have unit l2 norm
+V_norm <- t(apply(V, 1, function(x) x / sqrt(sum(x^2))))
+dim(V_norm)
+
+# Find indices of "woman" and "man" in the dictionary
+index_woman <- which(dictionary == "woman")
+index_man <- which(dictionary == "man")
+
+# Check if indices are found
+if(length(index_woman) == 0) cat("Index for 'woman' not found.\n")
+if(length(index_man) == 0) cat("Index for 'man' not found.\n")
+
+# Compute V_diff only if both indices are found
+if(length(index_woman) > 0 && length(index_man) > 0) {
+  V_diff <- V_norm[index_woman, ] - V_norm[index_man, ]
+} else {
+  stop("Cannot compute V_diff, one of the indices not found.")
+}
+```
+
+For each word in your specified list, find its embedding, project it onto V, and store the projection value.
+```{r}
+# List of words
+words_list <- c("boy", "girl", "brother", "sister", "king", "queen", "he", "she", "john", "mary", "wall", "tree" )
+
+#Initialize a vector to store projection values
+projections <- numeric(length(words_list))
+
+#Compute projections
+for (i in 1: length(words_list)) {
+  index_word <- which(dictionary == words_list[i])
+  projections[i] <- sum(V_norm[index_word, ] * V_diff)
+}
+```
+
+Plot the Projection
+```{r}
+# Create a data frame for plotting
+projections_df <- data.frame(word = words_list, projection = projections)
+
+# Plot
+ggplot(projections_df, aes(x = projection, y = jitter(rep(1, length(projection))), label = word)) +
+  geom_text(size = 3, position = position_jitter(width = 0.1, height = 0), vjust = 0) +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  xlim(range(projections_df$projection) * c(1.1, 1.1)) + # Adjust x limits slightly
+  theme_minimal() +
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  xlab("Projection onto 'woman' - 'man' vector") +
+  ggtitle("Word Embeddings Projected onto 'woman' - 'man'")
+
+```
+It is obvious to observe that words that have strong gender associations, such as "king" and "queen" or "he" and "she" cluster at opposite side of the projection line. This demonstrates that the embeddings ability to capture gender-related semantic differences. Words with little or no inherent gender association, like "tree" or "wall", cluster near the center of the projection line, which indicates that a lower projection value that signifies neutrality in the axis. 
+Another significant observation is that the potential biases present in the embeddings. The occupations strongly cluster towards left (man) without a clear rationale, it may reflect societal biases encoded in the training data.
+
+
+(b)
+```{r}
+words_list <- c("math", "matrix", "history", "nurse", "doctor", "pilot", "teacher", "engineer", "science", "arts", "literature", "bob", "alice")
+
+#Initialize a vector to store projection values
+projections <- numeric(length(words_list))
+
+#Compute projections
+for (i in 1: length(words_list)) {
+  index_word <- which(dictionary == words_list[i])
+  projections[i] <- sum(V_norm[index_word, ] * V_diff)
+}
+
+# Create a data frame for plotting
+projections_df <- data.frame(word = words_list, projection = projections)
+
+# Plot
+ggplot(projections_df, aes(x = projection, y = jitter(rep(1, length(projection))), label = word)) +
+  geom_text(size = 3, position = position_jitter(width = 0.1, height = 0), vjust = 0) +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  xlim(range(projections_df$projection) * c(1.1, 1.1)) + 
+  theme_minimal() +
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  xlab("Projection") +
+  ggtitle("Projection of Word Embeddings onto v")
+
+```
+Observations:
+We observed that profession-related words distribute differently along the axis depending on what v represents. For instance, if v captures a traditional gender role stereotype, professions like "nurse" or "engineer" might skew towards opposite ends. Also, the placement of gender-neutral names like "bob" and "alice" might reveal biases in the embeddings. For example, if "alice" projects closer to traditionally female-associated professions irrespective of the actual semantic axis, it could indicate embedded gender biases.
+
+Potential Problems:
+If systems like LinkedIn's job candidate search rely on such embeddings, they might inadvertently perpetuate gender stereotypes or biases. A resume mentioning "nurse" might be algorithmically favored for female candidates or vice versa with "engineer" for male candidates, regardless of the individual's qualifications or the job's gender relevance, which leads to unfair treatment and violates principles of equality. 
+
+(c)
+Adaptive Contextual Debiasing (ACD) can be applied, which involves dynamically adjusting word embeddings based on the context in which they're used, leveraging the insight that the relevance of certain biases (e.g., gender, age, race) varies significantly across different applications.
+First, identify vectors in the embedding space that represent specific biases (e.g., gender bias) by analyzing differences between word pairs known to embody these biases.Next, develop a mechanism to assess when and to what extent various biases are relevant or harmful in specific application contexts. Then adjust  embedding according to the contextual bias assessment. Lastly,  incorporate feedback loops and continuous monitoring to refine the bias assessment and adjustment processes over time, ensuring they remain aligned with evolving ethical standards and societal norms.
+
+
+
+#5.
+
+(a)
+```{r}
+# Find the index of "montreal" in the dictionary
+index_montreal <- which(dictionary == "montreal")
+
+# Get the embedding for "montreal"
+embedding_montreal <- V_norm[index_montreal, , drop = FALSE]  # drop=FALSE ensures it stays as a matrix
+
+# Compute the similarity of "montreal" to all words in the vocabulary
+similarities <- V_norm %*% t(embedding_montreal)
+
+# Convert similarities to a vector
+similarities_vector <- as.numeric(similarities)
+
+# Replace the similarity of "montreal" to itself with -1 so it doesn't get picked as most similar
+similarities_vector[index_montreal] <- -1
+
+# Find the indices of the words with the highest similarity to "montreal"
+highest_similarity_indices <- order(similarities_vector, decreasing = TRUE)[1:10]
+
+# Get the words with the highest similarity
+most_similar_words <- dictionary[highest_similarity_indices]
+
+# Print the most similar words to "montreal"
+print(most_similar_words)
+
+```
+
+
+(b)
+```{r}
+# Loading analogy tasks from a CSV file
+analogy_tasks <- read.csv('/Users/christinawei/Desktop/Math308 Midterm Project/analogy_task.txt', header = TRUE)
+
+
+# Initialize a counter for correct answers
+correct_answers <- 0
+
+# Step 2: Solve Analogy Tasks
+for (i in 1:nrow(analogy_tasks)) {
+  row <- analogy_tasks[i, ]
+  A <- row["A"]
+  B <- row["B"]
+  C <- row["C"]
+  correct_answer <- row["correct_answer"]
+  
+  idx_A <- which(dictionary == A)
+  idx_B <- which(dictionary == B)
+  idx_C <- which(dictionary == C)
+  
+  if (length(idx_A) == 0 || length(idx_B) == 0 || length(idx_C) == 0) {
+    next  # Skip if any word is not found
+  }
+  
+  target_vector <- V_norm[idx_B, ] - V_norm[idx_A, ] + V_norm[idx_C, ]
+  similarities <- matrix(NA, nrow = length(dictionary), ncol = 1)
+  
+  for (j in 1:length(dictionary)) {
+    if (!dictionary[j] %in% c(A, B, C)) {
+      similarities[j] <- sum(target_vector * V_norm[j, ])
+    }
+  }
+  
+  # Find the most similar word
+  similarities[idx_A] <- -Inf  # Exclude A
+  similarities[idx_B] <- -Inf  # Exclude B
+  similarities[idx_C] <- -Inf  # Exclude C
+  predicted_idx <- which.max(similarities)
+  predicted_word <- dictionary[predicted_idx]
+  
+  # Check if the prediction is correct
+  if (!is.na(predicted_word) && predicted_word == correct_answer) {
+    correct_answers <- correct_answers + 1
+  }
+}
+
+# Step 3: Evaluate Performance
+accuracy <- correct_answers / nrow(analogy_tasks)
+cat("Accuracy:", accuracy, "\n")
+
+```
+
