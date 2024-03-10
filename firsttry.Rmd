@@ -13,8 +13,8 @@ library (ggplot2)
 
 
 ```{r}
-co_occur_M <- read.csv('/Users/christinawei/Desktop/Math308 Midterm Project/co_occur.csv')
-dictionary <- readLines('/Users/christinawei/Desktop/Math308 Midterm Project/dictionary.txt')
+co_occur_M <- read.csv('/Users/paulmandelos/Downloads/co_occur.csv')
+dictionary <- readLines('/Users/paulmandelos/Downloads/dictionary.txt')
 M_normalized <- log1p(as.matrix(co_occur_M))
 ```                                                                                                                            
 
@@ -228,56 +228,109 @@ print(most_similar_words)
 ```
 
 
-(b)
-```{r}
+(b) 
+```{r hello}
 # Loading analogy tasks from a CSV file
-analogy_tasks <- read.csv('/Users/christinawei/Desktop/Math308 Midterm Project/analogy_task.txt', header = TRUE)
+analogy_tasks <- read.csv('/Users/paulmandelos/Downloads/analogy_task.txt', header = FALSE)
 
-
-# Initialize a counter for correct answers
 correct_answers <- 0
 
-# Step 2: Solve Analogy Tasks
 for (i in 1:nrow(analogy_tasks)) {
   row <- analogy_tasks[i, ]
-  A <- row["A"]
-  B <- row["B"]
-  C <- row["C"]
-  correct_answer <- row["correct_answer"]
-  
-  idx_A <- which(dictionary == A)
-  idx_B <- which(dictionary == B)
-  idx_C <- which(dictionary == C)
-  
+  row <- as.list(strsplit(row, '\\s+')[[1]])
+  A <- row[1]
+  B <- row[2]
+  C <- row[3]
+  correct_answer <- row[4]
+  idx_A <- which(dictionary == A[[1]][1])
+  idx_B <- which(dictionary == B[[1]][1])
+  idx_C <- which(dictionary == C[[1]][1])
+
   if (length(idx_A) == 0 || length(idx_B) == 0 || length(idx_C) == 0) {
+    cat("Skipping: ", A[[1]][1], B[[1]][1], C[[1]][1], " - One of the words not found.\n")
     next  # Skip if any word is not found
   }
-  
+
   target_vector <- V_norm[idx_B, ] - V_norm[idx_A, ] + V_norm[idx_C, ]
-  similarities <- matrix(NA, nrow = length(dictionary), ncol = 1)
-  
-  for (j in 1:length(dictionary)) {
-    if (!dictionary[j] %in% c(A, B, C)) {
-      similarities[j] <- sum(target_vector * V_norm[j, ])
-    }
-  }
-  
-  # Find the most similar word
-  similarities[idx_A] <- -Inf  # Exclude A
-  similarities[idx_B] <- -Inf  # Exclude B
-  similarities[idx_C] <- -Inf  # Exclude C
+  similarities <- as.numeric(V_norm %*% target_vector)
+  similarities[idx_A] <- -Inf
+  similarities[idx_B] <- -Inf
+  similarities[idx_C] <- -Inf
+
   predicted_idx <- which.max(similarities)
+  top5words <- 
   predicted_word <- dictionary[predicted_idx]
-  
-  # Check if the prediction is correct
+  cat("Analogy: ", A[[1]][1], ":", B[[1]][1], "::", C[[1]][1], ":", predicted_word, "\n")
   if (!is.na(predicted_word) && predicted_word == correct_answer) {
     correct_answers <- correct_answers + 1
   }
 }
 
-# Step 3: Evaluate Performance
 accuracy <- correct_answers / nrow(analogy_tasks)
 cat("Accuracy:", accuracy, "\n")
-
 ```
 
+
+(c)
+Here we will be applying two things, PCA and embedding refinement. We will also be combining both to see the different results.
+```{r part5c}
+# Apply PCA
+pca_result <- prcomp(V_norm, center = FALSE)
+# Examine the variance to decide on the number of components to keep
+plot(pca_result$sdev^2 / sum(pca_result$sdev^2), type = 'b', xlab = "Principal Component", ylab = "Variance Explained")
+# Transform the embeddings
+k <- 90  # For example, keeping the first 50 components
+V_PCA <- pca_result$x[, 1:k]
+
+# Refine embeddings by subtracting the mean and then normalizing
+mean_vector <- rowMeans(V_norm)
+refined_embeddings <- sweep(V_norm, 1, mean_vector, "-")
+V_embed <- t(apply(refined_embeddings, 1, function(x) x / sqrt(sum(x^2))))
+
+#Perform Both
+mean_vector <- rowMeans(V_PCA)
+refined_embeddings <- sweep(V_PCA, 1, mean_vector, "-")
+V_both <- t(apply(refined_embeddings, 1, function(x) x / sqrt(sum(x^2))))
+```
+
+```{r runningTask}
+correct_answers <- 0
+lst<-list(V_norm,V_PCA,V_embed,V_both)
+for (V in lst) {
+for (i in 1:nrow(analogy_tasks)) {
+  row <- analogy_tasks[i, ]
+  row <- as.list(strsplit(row, '\\s+')[[1]])
+  A <- row[1]
+  B <- row[2]
+  C <- row[3]
+  correct_answer <- row[4]
+  idx_A <- which(dictionary == A[[1]][1])
+  idx_B <- which(dictionary == B[[1]][1])
+  idx_C <- which(dictionary == C[[1]][1])
+
+  if (length(idx_A) == 0 || length(idx_B) == 0 || length(idx_C) == 0) {
+    cat("Skipping: ", A[[1]][1], B[[1]][1], C[[1]][1], " - One of the words not found.\n")
+    next  # Skip if any word is not found
+  }
+  #No changes
+  target_vector <- V[idx_B, ] - V[idx_A, ] + V[idx_C, ]
+  similarities <- as.numeric(V %*% target_vector)
+  similarities[idx_A] <- -Inf
+  similarities[idx_B] <- -Inf
+  similarities[idx_C] <- -Inf
+
+  predicted_idx <- which.max(similarities)
+  top5words <- 
+  predicted_word <- dictionary[predicted_idx]
+  #cat("Analogy: ", A[[1]][1], ":", B[[1]][1], "::", C[[1]][1], ":", predicted_word, "\n")
+  if (!is.na(predicted_word) && predicted_word == correct_answer) {
+    correct_answers <- correct_answers + 1
+  }
+}
+
+accuracy <- correct_answers / nrow(analogy_tasks)
+cat("Accuracy:", accuracy, "\n")
+correct_answers <- 0
+}
+```
+We see that PCA performed extremely poorly with an Accuracy of 13%. This is with 50 principal components. The accuracy for the refined embedding (normalizing) is roughly similar to the no changes accuracy. This implies that normalizing the vectors does not accomplish anything. We first thought to use PCA to reduce the amount of noise in the data and pick up on the most important trends in the data.For the normalization, we decided it was a low-cost approach to try to improve the accuracy of our task.
