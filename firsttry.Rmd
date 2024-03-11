@@ -266,17 +266,17 @@ for (i in 1:nrow(analogy_tasks)) {
   if (!is.na(predicted_word) && predicted_word == correct_answer) {
     correct_answers <- correct_answers + 1
   }
-  if (predicted_word != correct_answer) {
-    i <- 1
-    cat("Analogy: ", A[[1]][1], ":", B[[1]][1], "::", C[[1]][1], ":", correct_answer[[1]], "\n")
-    for (x in indecies[[2]]) {
-      new_word <- dictionary[x]
-      cat("\t","Predicted word with position",i,"is",new_word,"\n")
-      i<-i+1
-    }
+  #if (predicted_word != correct_answer) {
+    #i <- 1
+    #cat("Analogy: ", A[[1]][1], ":", B[[1]][1], "::", C[[1]][1], ":", correct_answer[[1]], "\n")
+    #for (x in indecies[[2]]) {
+    #  new_word <- dictionary[x]
+      #cat("\t","Predicted word with position",i,"is",new_word,"\n")
+    #  i<-i+1
+    #}
     
     
-  }
+  #}
 }
 
 accuracy <- correct_answers / nrow(analogy_tasks)
